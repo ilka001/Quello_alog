@@ -1,0 +1,6 @@
+模型名称: 悲伤_vs_开心
+情绪标签: ['悲伤', '开心']
+特征数量: 6
+特征顺序: RMSSD, pNN58, SDNN, SD1, SD2, SD1_SD2
+标准化器: StandardScaler
+模型类型: SVM
