@@ -19,6 +19,10 @@ except ImportError:
     ONNX_AVAILABLE = False
 warnings.filterwarnings('ignore')
 
+# -------------------------------------------------------在此输入csv路径-------------------------------------------------------
+csv_path = r"C:\Users\QAQ\Desktop\emotion\special_data\HOR\hrv_MK_train.csv"
+# ----------------------------------------------------------------------------------------------------------------------------
+
 class SVMPairwiseClassifier:
     def __init__(self, data_file):
         self.data_file = data_file
@@ -344,7 +348,7 @@ def main():
     print("="*50)
     
     # 初始化SVM分类器
-    classifier = SVMPairwiseClassifier(r'C:\Users\QAQ\Desktop\emotion\hrv_MK_int8.csv')
+    classifier = SVMPairwiseClassifier(csv_path)
     
     # 加载数据
     classifier.load_data()
