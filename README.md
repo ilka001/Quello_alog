@@ -17,36 +17,135 @@
 
 ```
 emotion/
-├── data/                           # 原始心率数据
-│   ├── 804愉悦平静组/              # 按情绪分组的原始数据
-│   ├── 805/                        # 个人数据文件夹
-│   └── ...
-├── individual_data/                # 个人数据分析
-│   ├── data/                       # 个人HRV数据
-│   ├── hrv_emotion_analysis.py     # 个人情绪分析
-│   └── delta_feature_analysis.py   # 特征差异分析
-├── svm/                           # SVM模型相关
-│   ├── train.py                   # SVM训练脚本
-│   └── *.csv                      # 训练数据
-├── onnx_models/                   # ONNX模型文件
-├── processed_data/                # 处理后的数据
-├── special_data/                  # 特殊数据
-├── 40s_data/                      # 40秒数据 包含了40s处理流程的相关脚本 也包含了10s数据的脚本
-├── done_data/                     # 已完成处理的数据
-├── forMK/                         # MK相关数据
-├── to_watch/                      # 与手表端协作
-├── hrv_feature_extractor.py       
-├── hrv_feature_extractor_with_quality.py  
-├── svm_four_class_trainer.py     # SVM四分类训练器
-├── svm_pairwise_classifier.py    # SVM两两分类器
-├── run_svm_training.py           # 快速SVM训练脚本
-├── run_svm_with_onnx.py          # SVM训练和ONNX导出
-├── csv_process.py               # CSV数据处理
-├── process_any_csv.py           # 通用CSV处理
-├── fengzhijiance.py             # 峰值检测工具
-├── formatter.py                 # 数据格式化工具
-├── cleaning.py                  # 数据清洗工具
-└── README.md                  
+├── 📁 data/                           # 原始心率数据目录
+│   ├── 804愉悦平静组/                 # 愉悦和平静情绪组合的原始数据
+│   │   ├── *.csv                      # 心率信号CSV文件（时间-数值格式）
+│   │   └── *.txt                      # 情绪标签和时间范围文件
+│   ├── 805/                           # 个人数据文件夹（805号被试）
+│   │   ├── *.csv                      # 心率数据文件
+│   │   └── *.txt                      # 标签文件
+│   ├── 806悲伤平静组/                 # 悲伤和平静情绪组合数据
+│   ├── 807/                           # 807号被试数据
+│   ├── 808/                           # 808号被试数据（大量数据）
+│   ├── 812/                           # 812号被试数据
+│   ├── 814/                           # 814号被试数据
+│   ├── 815/                           # 815号被试数据
+│   ├── 818/                           # 818号被试数据（最大数据集）
+│   ├── 819/                           # 819号被试数据
+│   ├── 820/                           # 820号被试数据
+│   ├── 821/                           # 821号被试数据
+│   ├── 822/                           # 822号被试数据
+│   └── PROBOLEM_DATA/                 # 问题数据（质量不佳的数据）
+│       ├── *.CSV                     # 有问题的原始数据文件
+│       └── *.txt                     # 问题描述文件
+│
+├── 📁 individual_data/                # 个人数据分析目录
+│   ├── data/                          # 个人HRV特征数据
+│   │   ├── *姓名_hrv_data.csv         # 个人HRV特征文件
+│   │   └── ...                        # 100+个个人数据文件
+│   ├── hrv_emotion_analysis.py        # 个人情绪分析脚本
+│   ├── delta_feature_analysis.py      # 特征差异分析脚本
+│   ├── hrv_classification_algorithms.py # 分类算法比较
+│   ├── feature_optimization.py        # 特征优化脚本
+│   ├── delta_results.csv             # 特征差异分析结果
+│   └── median_delta_results.csv      # 中位数差异分析结果
+│
+├── 📁 svm/                           # SVM模型训练相关
+│   ├── train.py                      # SVM训练脚本
+│   ├── *.csv                         # 训练数据集
+│   └── *.joblib                      # 训练好的模型文件
+│
+├── 📁 onnx_models/                   # ONNX模型文件目录
+│   ├── *.onnx                        # 导出的ONNX模型文件
+│   └── *_info.txt                    # 模型信息文件
+│
+├── 📁 processed_data/                # 处理后的数据目录
+│   └── xx.bat                        # 批处理脚本
+│
+├── 📁 special_data/                  # 特殊数据集
+│   ├── HOR/                          # HOR数据集
+│   │   ├── hrv_MK.csv               # MK的HRV特征数据
+│   │   ├── hrv_MK_train.csv         # MK训练数据
+│   │   ├── hrv_MK_int8.csv          # MK的int8格式数据
+│   │   ├── K.csv                    # K情绪原始数据
+│   │   ├── F.csv                    # F情绪原始数据
+│   │   ├── B.csv                    # B情绪原始数据
+│   │   ├── P.csv                    # P情绪原始数据
+│   │   ├── P2.csv, P3.csv           # P情绪变体数据
+│   │   └── 0.txt                    # 标签文件
+│   └── TKS/                          # TKS数据集
+│       ├── hrv_FB.csv               # FB的HRV特征数据
+│       ├── hrv_FB_train.csv         # FB训练数据
+│       ├── hrv_FB_int8.csv          # FB的int8格式数据
+│       ├── B/                        # B情绪数据子目录
+│       │   └── 1分至18分钟 4分.csv   # 时间分段数据
+│       ├── P/                        # P情绪数据子目录
+│       │   ├── P1.csv, P2.csv       # P情绪分段数据
+│       │   ├── P3.csv, P4.csv       # P情绪分段数据
+│       └── 0.txt                    # 标签文件
+│
+├── 📁 40s_data/                      # 40秒数据处理流程
+│   ├── splitter.py                   # 数据分割脚本
+│   ├── processor_40s.py              # 40秒数据处理器
+│   ├── processor_10s.py              # 10秒数据处理器
+│   ├── processor_batch_40s.py       # 批量40秒数据处理器
+│   ├── text_parser.py               # 文本解析器
+│   ├── run.py                       # 运行脚本
+│   ├── README.md                    # 40s数据处理说明
+│   ├── LABEL.txt                    # 标签文件
+│   ├── TIME_LABEL.txt               # 时间标签文件
+│   ├── new.txt                      # 新标签文件
+│   ├── backup_batch/                # 批量处理备份目录
+│   │   └── *.csv                    # RR间隔数据备份文件
+│   └── test/                        # 测试数据目录
+│       ├── *.txt                    # 测试标签文件
+│       └── 备注*.txt                # 测试备注文件
+│
+├── 📁 done_data/                     # 已完成处理的数据
+│   ├── hrv_data_10s.csv             # 10秒HRV特征数据
+│   ├── hrv_data_40s.csv             # 40秒HRV特征数据
+│   ├── hrv_data_10s_cleaned.csv     # 清洗后的10秒数据
+│   ├── hrv_data_10s_fortrain.csv    # 用于训练的10秒数据
+│   ├── four_emotion.csv             # 四情绪分类数据
+│   ├── tag.csv                      # 标签数据
+│   └── README.md                    # 完成数据说明
+│
+├── 📁 forMK/                        # MK相关数据和可视化
+│   ├── 1.csv, 2.csv, 3.csv          # MK的HRV特征数据文件
+│   ├── 4.csv, 5.csv                 # MK的HRV特征数据文件
+│   ├── fengzhijiance.py             # 峰值检测脚本
+│   └── visualization/                # 可视化结果目录
+│       ├── 1.png, 1-f.png           # 数据1的波形图和峰值图
+│       ├── 2.png, 2-f.png           # 数据2的波形图和峰值图
+│       ├── 3.png, 3-f.png           # 数据3的波形图和峰值图
+│       ├── 4.png, 4-f.png           # 数据4的波形图和峰值图
+│       └── 5.png, 5-f.png           # 数据5的波形图和峰值图
+│
+├── 📁 to_watch/                     # 与手表端协作相关
+│   ├── test_hrv_simple.py          # 简单HRV测试脚本
+│   ├── test_onnx_model.py          # ONNX模型测试脚本
+│   ├── test_output_format.py       # 输出格式测试脚本
+│   └── test_output_simple.py       # 简单输出测试脚本
+│
+├── 🔧 核心脚本文件
+│   ├── hrv_feature_extractor.py     # HRV特征提取器（10秒版本）
+│   ├── hrv_feature_extractor_with_quality.py # 带质量评估的HRV特征提取器
+│   ├── svm_four_class_trainer.py    # SVM四分类训练器
+│   ├── svm_pairwise_classifier.py   # SVM两两分类器
+│   ├── run_svm_training.py          # 快速SVM训练脚本
+│   ├── run_svm_with_onnx.py         # SVM训练和ONNX导出脚本
+│   ├── csv_process.py              # CSV数据处理脚本
+│   ├── process_any_csv.py          # 通用CSV处理脚本
+│   ├── fengzhijiance.py            # 峰值检测工具
+│   ├── formatter.py                # 数据格式化工具
+│   ├── cleaning.py                 # 数据清洗工具
+│   ├── csv_paths_list.txt          # CSV文件路径列表
+│   └── clear_processed_data.bat     # 清理处理数据的批处理脚本
+│
+├── 📊 结果文件
+│   ├── confusion_matrix.png         # 混淆矩阵图
+│   ├── multiclass_roc_curve.png    # 多分类ROC曲线图
+│   └── README.md                   # 项目说明文档
 ```
 
 ## 🚀 快速开始
