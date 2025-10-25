@@ -22,9 +22,7 @@ import time
 # CSV文件路径列表（按顺序对应标签）
 CSV_PATHS = [
 
-    r"C:\Users\QAQ\Desktop\emotion\spe d\HOR\K.csv",
-    r"C:\Users\QAQ\Desktop\emotion\spe d\HOR\F.csv",
-    # r"", 
+    r"C:\Users\QAQ\Desktop\emotion\data\807\11\1543135.CSV", 
     # r"",
     # r"",
     # r"",     

@@ -21,7 +21,7 @@ from typing import Tuple, Dict, Optional
 # ============================================================================================
 
 # 默认输入文件路径
-DEFAULT_INPUT_CSV = r"C:\Users\QAQ\Desktop\emotion\spe d\hrv_19700101_001414.csv"
+DEFAULT_INPUT_CSV = r"C:\Users\QAQ\Desktop\emotion\forMK\2.csv"
 
 # 数据段长度（毫秒）- 默认10秒
 SEGMENT_DURATION_MS = 10000
