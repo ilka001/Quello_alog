@@ -2,29 +2,29 @@ import pandas as pd
 import numpy as np
 
 
-def convert_csv_float_to_int8_pandas(input_file, output_file):
-    """
-    使用pandas将CSV文件中的浮点数转换为int8
-    """
-    # 读取CSV文件
-    df = pd.read_csv(input_file)
+# def convert_csv_float_to_int8_pandas(input_file, output_file):
+#     """
+#     使用pandas将CSV文件中的浮点数转换为int8
+#     """
+#     # 读取CSV文件
+#     df = pd.read_csv(input_file)
     
-    # 遍历所有列，将浮点数列转换为int8
-    for column in df.columns[:5]:
-        if df[column].dtype in ['float64', 'float32']:
-            # 将浮点数转换为int8
-            df[column] = df[column].astype(np.int8)
+#     # 遍历所有列，将浮点数列转换为int8
+#     for column in df.columns[:5]:
+#         if df[column].dtype in ['float64', 'float32']:
+#             # 将浮点数转换为int8
+#             df[column] = df[column].astype(np.int8)
     
-    # 保存转换后的CSV文件
-    df.to_csv(output_file, index=False)
-    print(f"转换完成！结果已保存到: {output_file}")
+#     # 保存转换后的CSV文件
+#     df.to_csv(output_file, index=False)
+#     print(f"转换完成！结果已保存到: {output_file}")
 
-# 使用示例
+# # 使用示例
 
 
-convert_csv_float_to_int8_pandas(r'C:\Users\QAQ\Desktop\emotion\hrv_MK.csv', r'C:\Users\QAQ\Desktop\emotion\hrv_MK_int8.csv')
+# convert_csv_float_to_int8_pandas(r'C:\Users\QAQ\Desktop\emotion\hrv_MK.csv', r'C:\Users\QAQ\Desktop\emotion\hrv_MK_int8.csv')
 
-i=1
+i=0
 
 if i == 0:
     df = pd.read_csv(r'C:\Users\QAQ\Desktop\emotion\hrv_data.csv')
@@ -48,7 +48,7 @@ if i == 0:
     # # --- 修改特定列的数据类型 ---
     # df['Age'] = df['Age'].astype(float) # 改为浮点数
     df[column_name] = df[column_name].astype(str).str.lstrip('0 ')
-    df.to_csv(r'hrv_MK.csv', index=False)
+    df.to_csv(r'hrv_0.csv', index=False)
 
 
 

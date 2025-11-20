@@ -13,13 +13,26 @@ import seaborn as sns
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import (classification_report, confusion_matrix, 
                            accuracy_score, precision_score, recall_score, 
                            f1_score, roc_auc_score, roc_curve)
 from sklearn.multiclass import OneVsRestClassifier
 import joblib
+import os
 import warnings
 warnings.filterwarnings('ignore')
+
+# ONNX相关导入
+try:
+    from skl2onnx import convert_sklearn
+    from skl2onnx.common.data_types import FloatTensorType
+    import onnx
+    ONNX_AVAILABLE = True
+except ImportError:
+    ONNX_AVAILABLE = False
+    print("警告: ONNX相关包未安装，将无法导出ONNX模型")
+    print("如需使用ONNX导出，请运行: pip install skl2onnx onnx onnxruntime")
 
 # 设置中文字体支持
 plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
@@ -78,10 +91,51 @@ class SVMEmotionClassifier:
             print(f"{i}: {label}")
         
         # 分割训练集和测试集
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+        X_train_df, X_test_df, y_train, y_test = train_test_split(
             X, y_encoded, test_size=test_size, random_state=random_state, 
             stratify=y_encoded
         )
+        
+        # 确保测试集包含所有类别
+        unique_classes = np.unique(y_encoded)
+        y_train = np.array(y_train)
+        y_test = np.array(y_test)
+        test_classes = np.unique(y_test)
+        missing_classes = set(unique_classes) - set(test_classes)
+        
+        if missing_classes:
+            print(f"\n警告: 测试集中缺少以下类别: {[self.label_encoder.classes_[c] for c in missing_classes]}")
+            print("正在从训练集中移动样本到测试集...")
+            
+            X_train_df = X_train_df.reset_index(drop=True)
+            X_test_df = X_test_df.reset_index(drop=True)
+            
+            for class_label in missing_classes:
+                train_class_indices = np.where(y_train == class_label)[0]
+                if len(train_class_indices) > 0:
+                    move_idx = train_class_indices[0]
+                    X_test_df = pd.concat([X_test_df, X_train_df.iloc[[move_idx]]], ignore_index=True)
+                    y_test = np.append(y_test, y_train[move_idx])
+                    X_train_df = X_train_df.drop(X_train_df.index[move_idx]).reset_index(drop=True)
+                    y_train = np.delete(y_train, move_idx)
+                    print(f"  已移动类别 {self.label_encoder.classes_[class_label]} 的样本到测试集")
+        
+        # 转换为numpy数组用于后续处理
+        self.X_train = X_train_df.values
+        self.X_test = X_test_df.values
+        self.y_train = y_train
+        self.y_test = y_test
+        
+        # 验证并显示测试集类别分布
+        final_test_classes = np.unique(self.y_test)
+        if len(final_test_classes) == len(unique_classes):
+            print(f"\n✓ 测试集已包含所有 {len(unique_classes)} 个类别")
+        else:
+            print(f"\n警告: 测试集仍缺少某些类别")
+        print(f"测试集中各类别样本数:")
+        for cls in unique_classes:
+            count = np.sum(self.y_test == cls)
+            print(f"  {self.label_encoder.classes_[cls]}: {count}")
         
         # 特征标准化
         self.scaler = StandardScaler()
@@ -108,7 +162,7 @@ class SVMEmotionClassifier:
         }
         
         # 网格搜索
-        svm = SVC(random_state=42)
+        svm = SVC(random_state=42, probability=True)
         grid_search = GridSearchCV(
             svm, param_grid, cv=cv, scoring='accuracy', 
             n_jobs=-1, verbose=1
@@ -297,30 +351,156 @@ class SVMEmotionClassifier:
         plt.savefig('feature_importance.png', dpi=300, bbox_inches='tight')
         plt.show()
     
-    def save_model(self, model_path='svm_emotion_classifier.joblib'):
+    def save_model(self, model_path='svm_emotion_classifier.onnx', save_onnx=True):
         """
-        保存训练好的模型
-        """
-        model_data = {
-            'model': self.model,
-            'scaler': self.scaler,
-            'label_encoder': self.label_encoder,
-            'feature_names': self.feature_names
-        }
+        保存训练好的模型为ONNX格式
         
-        joblib.dump(model_data, model_path)
-        print(f"\n模型已保存至: {model_path}")
+        Args:
+            model_path (str): 模型保存路径（.onnx文件）
+            save_onnx (bool): 是否保存ONNX格式，False则保存为joblib格式
+        """
+        if save_onnx and ONNX_AVAILABLE:
+            try:
+                # 创建包含scaler和model的Pipeline
+                pipeline = Pipeline([
+                    ('scaler', self.scaler),
+                    ('svm', self.model)
+                ])
+                
+                # 获取特征数量
+                n_features = len(self.feature_names)
+                
+                # 定义输入类型
+                initial_type = [('float_input', FloatTensorType([None, n_features]))]
+                
+                # 转换为ONNX格式
+                onnx_model = convert_sklearn(
+                    pipeline,
+                    initial_types=initial_type,
+                    target_opset=11
+                )
+                
+                # 保存ONNX模型
+                with open(model_path, "wb") as f:
+                    f.write(onnx_model.SerializeToString())
+                
+                print(f"\nONNX模型已保存至: {model_path}")
+                
+                # 保存label_encoder和特征名称信息
+                info_path = model_path.replace('.onnx', '_info.joblib')
+                model_info = {
+                    'label_encoder': self.label_encoder,
+                    'feature_names': self.feature_names,
+                    'n_features': n_features,
+                    'classes': self.label_encoder.classes_.tolist()
+                }
+                joblib.dump(model_info, info_path)
+                print(f"模型信息已保存至: {info_path}")
+                
+                # 打印模型信息
+                print(f"\n模型信息:")
+                print(f"  特征数量: {n_features}")
+                print(f"  特征名称: {', '.join(self.feature_names)}")
+                print(f"  类别数量: {len(self.label_encoder.classes_)}")
+                print(f"  类别标签: {', '.join(self.label_encoder.classes_)}")
+                
+            except Exception as e:
+                print(f"\n错误: 导出ONNX模型失败: {e}")
+                print("将改用joblib格式保存")
+                joblib_path = model_path.replace('.onnx', '.joblib')
+                model_data = {
+                    'model': self.model,
+                    'scaler': self.scaler,
+                    'label_encoder': self.label_encoder,
+                    'feature_names': self.feature_names
+                }
+                joblib.dump(model_data, joblib_path)
+                print(f"模型已保存至: {joblib_path}")
+            
+        elif save_onnx and not ONNX_AVAILABLE:
+            print("\n警告: ONNX功能不可用，改用joblib格式保存")
+            joblib_path = model_path.replace('.onnx', '.joblib')
+            model_data = {
+                'model': self.model,
+                'scaler': self.scaler,
+                'label_encoder': self.label_encoder,
+                'feature_names': self.feature_names
+            }
+            joblib.dump(model_data, joblib_path)
+            print(f"模型已保存至: {joblib_path}")
+        else:
+            # 保存为joblib格式
+            if not model_path.endswith('.joblib'):
+                model_path = model_path.replace('.onnx', '.joblib')
+            model_data = {
+                'model': self.model,
+                'scaler': self.scaler,
+                'label_encoder': self.label_encoder,
+                'feature_names': self.feature_names
+            }
+            joblib.dump(model_data, model_path)
+            print(f"\n模型已保存至: {model_path}")
     
-    def load_model(self, model_path='svm_emotion_classifier.joblib'):
+    def load_model(self, model_path='svm_emotion_classifier.joblib', load_onnx=False):
         """
         加载训练好的模型
+        
+        Args:
+            model_path (str): 模型文件路径
+            load_onnx (bool): 是否加载ONNX格式模型
         """
-        model_data = joblib.load(model_path)
-        self.model = model_data['model']
-        self.scaler = model_data['scaler']
-        self.label_encoder = model_data['label_encoder']
-        self.feature_names = model_data['feature_names']
-        print(f"模型已从 {model_path} 加载")
+        if load_onnx and model_path.endswith('.onnx'):
+            try:
+                import onnxruntime as ort
+                
+                # 加载ONNX模型
+                self.onnx_session = ort.InferenceSession(model_path)
+                self.input_name = self.onnx_session.get_inputs()[0].name
+                self.output_name = self.onnx_session.get_outputs()[0].name
+                
+                # 加载模型信息
+                info_path = model_path.replace('.onnx', '_info.joblib')
+                if os.path.exists(info_path):
+                    model_info = joblib.load(info_path)
+                    self.feature_names = model_info['feature_names']
+                    
+                    # 恢复label_encoder
+                    try:
+                        self.label_encoder = model_info['label_encoder']
+                        # 验证label_encoder是否有效
+                        _ = self.label_encoder.classes_
+                    except:
+                        # 如果无法恢复，使用备份的classes列表重建
+                        le = LabelEncoder()
+                        le.classes_ = np.array(model_info['classes'])
+                        self.label_encoder = le
+                    
+                    print(f"ONNX模型已从 {model_path} 加载")
+                    print(f"模型信息: {len(self.feature_names)} 个特征, {len(self.label_encoder.classes_)} 个类别")
+                else:
+                    raise FileNotFoundError(f"模型信息文件不存在: {info_path}")
+                    
+            except ImportError:
+                print("错误: 需要安装onnxruntime来加载ONNX模型")
+                print("请运行: pip install onnxruntime")
+                raise
+            except Exception as e:
+                print(f"加载ONNX模型失败: {e}")
+                raise
+        else:
+            # 加载joblib格式
+            if not model_path.endswith('.joblib'):
+                # 尝试查找joblib文件
+                joblib_path = model_path.replace('.onnx', '.joblib')
+                if os.path.exists(joblib_path):
+                    model_path = joblib_path
+            
+            model_data = joblib.load(model_path)
+            self.model = model_data['model']
+            self.scaler = model_data['scaler']
+            self.label_encoder = model_data['label_encoder']
+            self.feature_names = model_data['feature_names']
+            print(f"模型已从 {model_path} 加载")
     
     def predict_new_sample(self, sample):
         """
@@ -329,6 +509,10 @@ class SVMEmotionClassifier:
         Args:
             sample: 新样本特征（list或array）
         """
+        # 检查是否使用ONNX模型
+        if hasattr(self, 'onnx_session'):
+            return self._predict_with_onnx(sample)
+        
         if self.model is None:
             raise ValueError("模型未训练，请先训练模型")
         
@@ -355,6 +539,39 @@ class SVMEmotionClassifier:
             print(f"  {class_name}: {probability[i]:.4f}")
         
         return emotion, probability
+    
+    def _predict_with_onnx(self, sample):
+        """
+        使用ONNX模型进行预测
+        """
+        import onnxruntime as ort
+        
+        # 确保输入是正确的格式
+        if isinstance(sample, list):
+            sample = np.array(sample, dtype=np.float32).reshape(1, -1)
+        elif len(sample.shape) == 1:
+            sample = sample.reshape(1, -1).astype(np.float32)
+        else:
+            sample = sample.astype(np.float32)
+        
+        # 使用ONNX模型预测
+        inputs = {self.input_name: sample}
+        outputs = self.onnx_session.run([self.output_name], inputs)
+        
+        # 获取预测结果（ONNX模型输出概率）
+        probabilities = outputs[0][0]
+        prediction = np.argmax(probabilities)
+        
+        # 解码标签
+        emotion = self.label_encoder.inverse_transform([prediction])[0]
+        
+        # 显示结果
+        print(f"\n预测结果: {emotion}")
+        print(f"各类别概率:")
+        for i, class_name in enumerate(self.label_encoder.classes_):
+            print(f"  {class_name}: {probabilities[i]:.4f}")
+        
+        return emotion, probabilities
 
 
 def main():
@@ -365,7 +582,7 @@ def main():
     print("="*50)
     
     # 初始化分类器
-    classifier = SVMEmotionClassifier('svm/3_processed.csv')
+    classifier = SVMEmotionClassifier(r'C:\Users\QAQ\Desktop\emotion\hrv_FB_train.csv')
     
     # 加载和预处理数据
     classifier.load_and_preprocess_data(test_size=0.2, random_state=42)
@@ -390,7 +607,7 @@ def main():
     # 保存模型
     save_model = input("\n是否保存模型? (y/n, 默认y): ").lower().strip()
     if save_model != 'n':
-        classifier.save_model()
+        classifier.save_model(model_path='svm_emotion_classifier.onnx', save_onnx=True)
     
     # 演示预测新样本
     print("\n" + "="*50)

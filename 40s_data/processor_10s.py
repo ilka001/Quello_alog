@@ -27,13 +27,13 @@ import subprocess
 # --------------------------------------------------------------------------------------------
 
 # 输入数据目录（包含已划分好的CSV文件）
-INPUT_DATA_DIR = r"C:\Users\UiNCeY\Desktop\emotion\processed_data"
+INPUT_DATA_DIR = r"C:\Users\QAQ\Desktop\emotion\1111"
 
 # 输出文件
-OUTPUT_FILE = r"C:\Users\QAQ\Desktop\emotion\hrv_data.csv"
+OUTPUT_FILE = r"./hrv_data.csv"
 
 # RR间隔数据备份目录（每个标签单独保存）
-RR_BACKUP_BASE_DIR = r"C:\Users\UiNCeY\Desktop\emotion\backup"  # 40秒版本备份目录
+RR_BACKUP_BASE_DIR = r"./backup"  # 40秒版本备份目录
 
 # 最大线程数（建议设置为CPU核心数的1-2倍，因为HRV计算是CPU密集型）
 MAX_WORKERS = 14
